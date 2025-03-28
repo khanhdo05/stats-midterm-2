@@ -37,3 +37,14 @@ birth_claims <- claims %>% filter(ICD == "O80" | ICD == "O82")
 
 
 ```
+
+```{r}
+# convert dates and calculate age
+member <- member %>%
+  mutate(DoB = ymd(DoB),
+         age_at_delivery = floor(interval(DoB, ymd(paste(year, month, "01", sep="-"))) / years(1)))
+
+# apply age filter
+member <- member %>% filter(age_at_delivery >= 18 & age_at_delivery < 41)
+head(member)
+```
