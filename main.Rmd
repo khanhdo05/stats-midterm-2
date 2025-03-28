@@ -1,0 +1,17 @@
+---
+title: "Midterm 2: Data Manipulation"
+author: "Susannah, Finn, Khanh"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data
+
+```{r}
+member <- read.csv("https://collinn.github.io/data/member.csv")
+claims <- read.csv("https://collinn.github.io/data/claims.csv")
+```
