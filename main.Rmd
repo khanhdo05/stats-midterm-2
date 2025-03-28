@@ -30,7 +30,7 @@ Our study is restricted to only those women who were at least 18 years old and y
 
 ```{r}
 # Attempting to find only claims which are births 
-birth_claims <- claims %>% filter(ICD == "O80" | ICD == "O82")
+birth_claims <- claims %>% filter(ICD %in% c("O80", "O82"))
 
 # Once we have the birth claims, we can join with members to filter out any
 # members who got opioids that did not give birth
