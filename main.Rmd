@@ -48,3 +48,12 @@ member <- member %>%
 member <- member %>% filter(age_at_delivery >= 18 & age_at_delivery < 41)
 head(member)
 ```
+
+
+```{r}
+#join birth claims to member
+joined_claims <- inner_join(x = birth_claims, y = member, by = "id")
+
+join_claims <- joined_claims %>%
+  rename(Date_Delivery=date)
+```
