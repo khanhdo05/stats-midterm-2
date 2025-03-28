@@ -30,7 +30,18 @@ Our study is restricted to only those women who were at least 18 years old and y
 
 ```{r}
 # Attempting to find only claims which are births 
-birth_claims <- claims %>% filter(ICD %in% c("O80", "O82"))
+birth_claims <- claims %>% 
+  mutate(delivery_type = case_when(
+    ICD %in% c("O80") ~ "Vaginal",
+    ICD %in% c("O82") ~ "Cesarean",
+    TRUE ~ NA_character_
+  )) %>%
+  mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+  mutate(mental_health_diagnosis = case_when(
+    ICD %in% c("F41.8") ~ "Anxiety",
+    ICD %in% c("F32.3") ~ "Depression",
+    TRUE ~ NA_character_
+  ))
 
 # Once we have the birth claims, we can join with members to filter out any
 # members who got opioids that did not give birth
