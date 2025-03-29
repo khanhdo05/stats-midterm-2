@@ -68,3 +68,30 @@ joined_claims <- inner_join(x = birth_claims, y = member, by = "id")
 join_claims <- joined_claims %>%
   rename(Date_Delivery=date)
 ```
+
+```{r}
+# For insurance claims: similar to Khanh's mutation, create a binary variable
+# for whether individuals have had events happen to them each claim.
+claims_history <- claims %>% 
+   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
+   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
+   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
+
+# Summarize individual patients to see if they fit any of our criteria of interest:
+# gave birth, had migraine, had mental health issues, or had opioids prescribed. 
+# Group by id for a single patient. 
+patient_summaries <- claims_history %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
+            had_migraine = ifelse(max(migraine_status > 0), "Yes", "No"),
+            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), "Yes", "No"),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"))
+
+# We may be able to remove patients who do not fit any of our criteria.
+# However... this is a limited analysis, does not consider timeframe.
+# Might be good for chopping down observations.
+
+# Idea: remove individuals of disinterest from patient_summaries, and then join
+# by matching patient IDs which remain.
+```
