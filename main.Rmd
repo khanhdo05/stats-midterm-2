@@ -95,3 +95,41 @@ patient_summaries <- claims_history %>%
 # Idea: remove individuals of disinterest from patient_summaries, and then join
 # by matching patient IDs which remain.
 ```
+
+```{r}
+#I added to Finn's code so it was easier to see type of birth
+claims_history <- claims %>% 
+   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
+   mutate(vaginal = ifelse(ICD %in% "O80", 1, 0)) %>%
+   mutate(Csection = ifelse(ICD %in% "O82", 1, 0)) %>%
+   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
+   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
+```
+
+```{r}
+#I also added type of birth to this code
+patient_summaries <- claims_history %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
+            vaginal = ifelse(max(vaginal > 0), "Yes", "No"),
+            Csection = ifelse(max(Csection > 0), "Yes", "No"),
+            had_migraine = ifelse(max(migraine_status > 0), "Yes", "No"),
+            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), "Yes", "No"),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"))
+```
+
+```{r}
+#the way we originally calculated age at delivery was changing depending on the insurance year
+#here's a new way I figured out, but I can't figure out how to make it give the age in years
+member_age <- join_claims %>%
+  mutate(Age_Delivery=ymd(Date_Delivery)-ymd(DoB)) %>%
+  mutate(Age_Delivery=Age_Delivery/365) %>%
+  filter(age_at_delivery >= 18 & age_at_delivery < 41)
+```
+
+```{r}
+#data set of only people who gave birth, their medical claims, and months insured
+join_births <- inner_join(x=join_claims, y=patient_summaries, by = "id")
+#this has the right ages since it was already filtered, but we still need to figure out how long they were insured
+```
