@@ -121,15 +121,16 @@ patient_summaries <- claims_history %>%
 
 ```{r}
 #the way we originally calculated age at delivery was changing depending on the insurance year
-#here's a new way I figured out, but I can't figure out how to make it give the age in years
+#here's a new way I figured out
 member_age <- join_claims %>%
   mutate(Age_Delivery=ymd(Date_Delivery)-ymd(DoB)) %>%
   mutate(Age_Delivery=Age_Delivery/365) %>%
-  filter(age_at_delivery >= 18 & age_at_delivery < 41)
+  mutate(Age_Delivery=as.integer(Age_Delivery)) %>%
+  filter(Age_Delivery >= 18 & Age_Delivery < 41)
 ```
 
 ```{r}
 #data set of only people who gave birth, their medical claims, and months insured
 join_births <- inner_join(x=join_claims, y=patient_summaries, by = "id")
-#this has the right ages since it was already filtered, but we still need to figure out how long they were insured
+#this has the right ages since I filtered it, but we still need to figure out how long they were insured
 ```
