@@ -131,6 +131,6 @@ member_age <- join_claims %>%
 
 ```{r}
 #data set of only people who gave birth, their medical claims, and months insured
-join_births <- inner_join(x=join_claims, y=patient_summaries, by = "id")
+join_births <- inner_join(x=member_age, y=patient_summaries, by = "id")
 #this has the right ages since I filtered it, but we still need to figure out how long they were insured
 ```
