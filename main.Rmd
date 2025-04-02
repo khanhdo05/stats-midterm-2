@@ -134,3 +134,15 @@ member_age <- join_claims %>%
 join_births <- inner_join(x=member_age, y=patient_summaries, by = "id")
 #this has the right ages since I filtered it, but we still need to figure out how long they were insured
 ```
+
+```{r}
+#counts how many months patient insured since each month is one row
+insured_time <- member %>%
+  group_by(id) %>%
+  summarize(insured_length=n())
+
+#join insured_length to main dataset
+join_insurance <- inner_join(x=join_births, y=insured_time, by = "id") %>%
+  filter(Date_Delivery >= "2017-09-01")#because sept 1st earliest delivery date we can gurantee they were insured 9 months before if insured starting on jan 1st
+#there are 5,981 individual ids in this set
+```
