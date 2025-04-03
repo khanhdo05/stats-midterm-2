@@ -1,0 +1,216 @@
+---
+title: "Midterm 2"
+author: "Finn, Khanh, Susannah"
+date: "2025-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+```
+
+# Data
+
+```{r}
+member <- read.csv("https://collinn.github.io/data/member.csv")
+claims <- read.csv("https://collinn.github.io/data/claims.csv")
+```
+
+Our study is restricted to only those women who were at least 18 years old and younger than 41 (that is 40 and 11 months is fine, 41 years and 0 months is not) at the time of delivery.
+
+```{r}
+# Attempting to find only claims which are births 
+birth_claims <- claims %>% 
+  mutate(delivery_type = case_when(
+    ICD %in% c("O80") ~ "Vaginal",
+    ICD %in% c("O82") ~ "Cesarean",
+    TRUE ~ NA_character_
+  )) %>%
+  mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+  mutate(mental_health_diagnosis = case_when(
+    ICD %in% c("F41.8") ~ "Anxiety",
+    ICD %in% c("F32.3") ~ "Depression",
+    TRUE ~ NA_character_
+  ))
+
+# Once we have the birth claims, we can join with members to filter out any
+# members who got opioids that did not give birth
+```
+
+```{r}
+# Convert dates and calculate age
+member <- member %>%
+  mutate(DoB = ymd(DoB),
+         age_at_delivery = floor(interval(DoB, ymd(paste(year, month, "01", sep="-"))) / years(1)))
+
+# apply age filter
+member <- member %>% filter(age_at_delivery >= 18 & age_at_delivery < 41)
+head(member)
+```
+
+
+```{r}
+#join birth claims to member
+joined_claims <- inner_join(x = birth_claims, y = member, by = "id")
+
+join_claims <- joined_claims %>%
+  rename(Date_Delivery=date)
+```
+
+```{r}
+# For insurance claims: similar to Khanh's mutation, create a binary variable
+# for whether individuals have had events happen to them each claim.
+claims_history <- claims %>% 
+   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
+   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
+   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
+
+# Summarize individual patients to see if they fit any of our criteria of interest:
+# gave birth, had migraine, had mental health issues, or had opioids prescribed. 
+# Group by id for a single patient. 
+patient_summaries <- claims_history %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
+            had_migraine = ifelse(max(migraine_status > 0), "Yes", "No"),
+            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), "Yes", "No"),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"))
+
+# We may be able to remove patients who do not fit any of our criteria.
+# However... this is a limited analysis, does not consider timeframe.
+# Might be good for chopping down observations.
+
+# Idea: remove individuals of disinterest from patient_summaries, and then join
+# by matching patient IDs which remain.
+```
+
+```{r}
+#I added to Finn's code so it was easier to see type of birth
+claims_history <- claims %>% 
+   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
+   mutate(vaginal = ifelse(ICD %in% "O80", 1, 0)) %>%
+   mutate(Csection = ifelse(ICD %in% "O82", 1, 0)) %>%
+   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
+   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
+   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
+```
+
+```{r}
+# I also added type of birth to this code
+patient_summaries <- claims_history %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), 1, 0),
+            vaginal = ifelse(max(vaginal > 0), 1, 0),
+            Csection = ifelse(max(Csection > 0), 1, 0),
+            had_migraine = ifelse(max(migraine_status > 0), 1, 0),
+            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), 1, 0),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), 1, 0))
+```
+
+```{r}
+# the way we originally calculated age at delivery was changing depending on the insurance year
+# here's a new way I figured out
+member_age <- join_claims %>%
+  mutate(Age_Delivery=ymd(Date_Delivery)-ymd(DoB)) %>%
+  mutate(Age_Delivery=Age_Delivery/365) %>%
+  mutate(Age_Delivery=as.integer(Age_Delivery)) %>%
+  filter(Age_Delivery >= 18 | Age_Delivery < 42)
+```
+
+```{r}
+#data set of only people who gave birth, their medical claims, and months insured
+join_births <- inner_join(x=member_age, y=patient_summaries, by = "id")
+#this has the right ages since I filtered it, but we still need to figure out how long they were insured
+```
+
+```{r}
+#counts how many months patient insured since each month is one row
+insured_time <- member %>%
+  group_by(id) %>%
+  summarize(insured_length=n())
+
+```
+
+```{r}
+start_end_dates <- join_births %>%
+  mutate(insurance_date = as.Date(paste(year, month, "01", sep = "-"))) %>%
+  group_by(id) %>%
+  summarise(
+    insurance_start_date = min(insurance_date, na.rm = TRUE),
+    insurance_end_date = max(insurance_date, na.rm = TRUE)
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+join_insurance_late <- inner_join(x=join_births, y=insured_time, by = "id")
+
+patient_final_summaries <- join_insurance_late %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
+            vaginal = ifelse(max(vaginal > 0), "Yes", "No"),
+            Csection = ifelse(max(Csection > 0), "Yes", "No"),
+            migraine_status = ifelse(max(migraine_status > 0), "Yes", "No"),
+            mental_health_diagnosis.x = ifelse(max(mental_health_diagnosis.y > 0), "Yes", "No"),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"),
+            age_at_delivery = max(age_at_delivery)) %>%
+  subset(gave_birth %in% c("Yes"))
+
+# We can have 4237 - 4249
+```
+
+```{r}
+join_births <- join_births %>%
+  mutate(insurance_date = as.Date(paste(year, month, "01", sep = "-"))) %>%
+  group_by(id) %>%
+  mutate(
+    insurance_start_date = min(insurance_date, na.rm = TRUE),
+    insurance_end_date = max(insurance_date, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  distinct(id, .keep_all = TRUE) %>%
+  select(!c("insurance_date", "month", "year"))
+```
+
+```{r}
+# Individual patient claims for births.
+gave_birth_dates <- claims %>%
+  filter(ICD %in% c("O80", "O82")) %>%
+  group_by(id) %>%
+  summarise(gave_birth_date = min(date))
+
+patient_information_dates <- inner_join(x = gave_birth_dates, y = start_end_dates, by = "id")
+```
+
+```{r}
+# Adapted from Professor Rebelsky's Code.
+# Returns TRUE if date (d) occurred n months after the year (y), month (m) date.
+happen_after_n <- function(y, m, d, n) {
+  m <- m + 12*(y == 2018)
+  event <- month(d) + 12*(year(d) == 2018)
+  event - m >= n
+}
+```
+
+```{r}
+final_information <- inner_join(x = patient_final_summaries, 
+                                y = patient_information_dates, by = "id")
+
+final_information <- final_information %>% mutate(
+    insured_before = happen_after_n(year(as.Date(insurance_start_date)),
+                                    month(as.Date(insurance_start_date)),
+                                    as.Date(gave_birth_date),
+                                    9),
+    insured_after = happen_after_n(year(as.Date(gave_birth_date)),
+                                    month(as.Date(gave_birth_date)),
+                                    as.Date(insurance_end_date),
+                                    3)) %>%
+  filter(insured_before == "TRUE" & insured_after == "TRUE")
+
+count(final_information)
+```
