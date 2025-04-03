@@ -148,14 +148,16 @@ join_insurance <- inner_join(x=join_births, y=insured_time, by = "id") %>%
 ```
 
 ```{r}
-start_end_dates <- join_births %>%
+join_births <- join_births %>%
   mutate(insurance_date = as.Date(paste(year, month, "01", sep = "-"))) %>%
   group_by(id) %>%
-  summarise(
+  mutate(
     insurance_start_date = min(insurance_date, na.rm = TRUE),
     insurance_end_date = max(insurance_date, na.rm = TRUE)
   ) %>%
-  ungroup()
+  ungroup() %>%
+  distinct(id, .keep_all = TRUE) %>%
+  select(!c("insurance_date", "month", "year"))
 ```
 
 
