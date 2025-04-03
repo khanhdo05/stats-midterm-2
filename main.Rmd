@@ -157,3 +157,38 @@ start_end_dates <- join_births %>%
   ) %>%
   ungroup()
 ```
+
+
+
+```{r}
+# Finn 6005 observations. We need to cut this down? 
+join_insurance_late <- inner_join(x=join_births, y=insured_time, by = "id") %>%
+  filter(Date_Delivery >= "2017-09-01",
+         Date_Delivery <= "2018-09-01")
+
+patient_final_summaries <- join_insurance_late %>% 
+  group_by(id) %>%
+  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
+            vaginal = ifelse(max(vaginal > 0), "Yes", "No"),
+            Csection = ifelse(max(Csection > 0), "Yes", "No"),
+            migraine_status = ifelse(max(migraine_status > 0), "Yes", "No"),
+            mental_health_diagnosis.x = ifelse(max(mental_health_diagnosis.y > 0), "Yes", "No"),
+            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"),
+            age_at_delivery = max(age_at_delivery)) %>%
+  subset(gave_birth %in% c("Yes"))
+
+
+# Idea: mutate a data set into only birth claims, pull the date they gave births, and join this with insured_time? new variable "date_gave_birth" which can be our grounds for filtering
+
+# We can have 4237 - 4249
+```
+
+
+
+```{r}
+# Individual patient claims for births.
+gave_birth_dates <- claims %>%
+  filter(ICD %in% c("O80", "O82")) %>%
+  group_by(id) %>%
+  summarise(gave_birth_date = min(date))
+```
