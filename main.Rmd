@@ -194,7 +194,7 @@ gave_birth_dates <- claims %>%
 ```
 
 ```{r}
-#filtering by if they gave birth, then the data connected should be the delivery date
+#filtering by if they gave birth, then the date connected should be the delivery date
 claim_filter <- claims %>%
   filter(ICD %in% c("O80", "O82")) %>%
   select(!CPT, ICD)
