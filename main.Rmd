@@ -148,16 +148,26 @@ join_insurance <- inner_join(x=join_births, y=insured_time, by = "id") %>%
 ```
 
 ```{r}
+
 join_births <- join_births %>%
-  mutate(insurance_date = as.Date(paste(year, month, "01", sep = "-"))) %>%
+  mutate(
+    insurance_date = as.Date(paste(year, month, "01", sep = "-")),
+    delivery_date = as.Date(Date_Delivery),  # Ensure Delivery_Date is in Date format
+    required_start = floor_date(delivery_date %m-% months(9), "month"),  # 9 months before
+    required_end = ceiling_date(delivery_date %m+% months(3), "month") - days(1)  # 3 months after end of delivery month
+  ) %>%
   group_by(id) %>%
   mutate(
     insurance_start_date = min(insurance_date, na.rm = TRUE),
-    insurance_end_date = max(insurance_date, na.rm = TRUE)
+    insurance_end_date = max(insurance_date, na.rm = TRUE),
+    insured_for_entire_period = insurance_start_date <= required_start & 
+                                insurance_end_date >= required_end
   ) %>%
   ungroup() %>%
-  distinct(id, .keep_all = TRUE) %>%
-  select(!c("insurance_date", "month", "year"))
+  filter(insured_for_entire_period) %>%  # Keep only those meeting criteria
+  select(-c(insurance_date, month, year, required_start, required_end, insured_for_entire_period)) %>%
+  drop_na(delivery_type)
+
 ```
 
 
