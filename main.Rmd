@@ -192,3 +192,15 @@ gave_birth_dates <- claims %>%
   group_by(id) %>%
   summarise(gave_birth_date = min(date))
 ```
+
+```{r}
+#filtering by if they gave birth, then the data connected should be the delivery date
+claim_filter <- claims %>%
+  filter(ICD %in% c("O80", "O82")) %>%
+  select(!CPT, ICD)
+
+
+#joins the insurance start and ends with the delivery dates
+join_dates_claims <- inner_join(x=claim_filter, y=start_end_dates, by="id") %>%
+  select(!ICD)
+```
