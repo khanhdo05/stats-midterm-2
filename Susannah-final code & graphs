@@ -140,6 +140,41 @@ ggplot(facet_labels, aes(x=migraine_status,
 ```
 
 
+### Graph 4
+```{r}
+ggplot(facet_labels, aes(x=birth_type, 
+                          fill=opioid_prescription)) +
+  geom_bar() +
+  facet_grid(migraine_status~mental_health_diagnosis, labeller=label_both) +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effects of Birth Type, Menta Health, and Mirgaines on Post-Partum Opioid Prescriptions") +
+  scale_x_discrete(labels=c("No", "Yes")) +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(size = 10))
+```
+
+### Graph 5
+```{r}
+ggplot(facet_labels, aes(x=opioid_prescription, y=age_at_delivery, 
+                         color=opioid_prescription)) +
+  geom_boxplot() +
+  facet_wrap(~birth_type) +
+  labs(x="Opioid Prescription", y="Age at Delivery", color="Opioid Prescription", 
+       title="Effect of Age on Opioid Prescription") +
+  theme_bw() +
+  scale_color_manual(values=c("green3", "red3")) 
+```
+### Graph 6
+```{r}
+ggplot(facet_labels, aes(x=birth_type, fill=opioid_prescription)) +
+  geom_bar() +
+  facet_wrap(~plan_type) +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription",
+       title="Effect of Insurance Plan Type 
+       and Birth Type on Opioid Prescription") +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3"))
+```
 ## Statistical Model
 
 
