@@ -97,23 +97,31 @@ final_dataset <- processed_claims %>%
 
 ## Exploratory Graphs
 
-### Graph 1
 ```{r}
+#Modifies final_dataset so the labels in the graphs are better understood
 facet_labels <- data.frame(id=final_dataset$id, 
-                  mental_health_diagnosis=final_dataset$mental_health_diagnosis,
+                  mental_health_diagnosis=
+                    ifelse(final_dataset$mental_health_diagnosis 
+                           %in% c("1"), "Yes", "No"), 
                   migraine_status=ifelse(final_dataset$migraine_status
                               %in% c("1"), "Yes", "No"),
-                  opioid_prescription=final_dataset$opioid_prescription, 
+                  opioid_prescription=ifelse(final_dataset$opioid_prescription 
+                                             %in% c("1"), "Yes", "No"), 
                  birth_type=ifelse(final_dataset$vaginal 
-                              %in% c("1"), "Vaginal", "Cesarean")) 
+                              %in% c("1"), "Vaginal", "Cesarean"), 
+                 age_at_delivery=final_dataset$age_at_delivery, 
+                 plan_type=final_dataset$PlanType) 
+```
 
+### Graph 1
+```{r}
 ggplot(facet_labels, aes(x=as.character(birth_type), 
-                          fill=as.character(opioid_prescription))) +
+                          fill=opioid_prescription)) +
   geom_bar() +
-  labs(x="Birth Type", y="Count", fill="Opioid Prescription") +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effect of Birth Type on Post-Partum Opioid Prescription") +
   scale_x_discrete(labels=c("Cesarean", "Vaginal")) +
   theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
+  scale_fill_manual(values=c("green3", "red3"))
 ```
 
 ### Graph 2
@@ -160,7 +168,7 @@ ggplot(facet_labels, aes(x=opioid_prescription, y=age_at_delivery,
   geom_boxplot() +
   facet_wrap(~birth_type) +
   labs(x="Opioid Prescription", y="Age at Delivery", color="Opioid Prescription", 
-       title="Effect of Age on Opioid Prescription") +
+       title="Effect of Age on Post-Partum Opioid Prescription") +
   theme_bw() +
   scale_color_manual(values=c("green3", "red3")) 
 ```
@@ -171,19 +179,21 @@ ggplot(facet_labels, aes(x=birth_type, fill=opioid_prescription)) +
   facet_wrap(~plan_type) +
   labs(x="Birth Type", y="Count", fill="Opioid Prescription",
        title="Effect of Insurance Plan Type 
-       and Birth Type on Opioid Prescription") +
+       and Birth Type on Post-Partum Opioid Prescription") +
   theme_bw() +
   scale_fill_manual(values=c("green3", "red3"))
 ```
+
 ### Graph 7
 ```{r}
 ggplot(facet_labels, aes(x=mental_health_diagnosis, 
                           fill=opioid_prescription)) +
   geom_bar() +
-  labs(x="Mental Health", y="Count", fill="Opioid Prescription", title="Effect of Mental Health Claim on Post-Partium Opioid Prescription") +
+  labs(x="Mental Health", y="Count", fill="Opioid Prescription", title="Effect of Mental Health Claim on Post-Partum Opioid Prescription") +
   theme_bw() +
   scale_fill_manual(values=c("green3", "red3"))
 ```
+
 
 ## Statistical Model
 
@@ -193,3 +203,9 @@ summary(my.model)
 ```
 
 ### Justifications
+We created a linear model to evaluate how our different variables of interest effect post-partum opioid prescriptions. Using the forward choice method, 
+we found that the type of birth, if the mother had a mental health claim, if the mother had migraines, and the type of insurance plan the mother impacted 
+if the mother got an opioid prescription. Age at delivery did not improve the model, showing that it was not influential on post-partum opioid prescription. 
+The adjusted r-square value of the final linear model is small, with $r^2=0.2608$. While migraine status does make the model better, the birth type is the most 
+influential variable on if a mother got an opioid prescription post-partum, with women who underwent C-sections more likely to get an opioid prescription than 
+women who had vaginal births. 
