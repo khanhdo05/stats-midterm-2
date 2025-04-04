@@ -50,6 +50,16 @@ processed_claims <- claims %>%
 ```
 
 ```{r}
+# Helper function:
+# Adapted from Professor Rebelsky's Code.
+# Returns TRUE if date (d) occurred n months after the year (y), month (m) date.
+happen_after_n <- function(y, m, d, n) {
+  m <- m + 12*(y == 2018)
+  event <- month(d) + 12*(year(d) == 2018)
+  event - m >= n
+}
+```
+```{r}
 # Combine all processing into final dataset
 final_dataset <- processed_claims %>%
   # Join with member data
