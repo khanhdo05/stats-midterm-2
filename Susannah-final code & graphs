@@ -1,0 +1,147 @@
+---
+title: "Midterm 2 Final"
+author: "Susannah, Finn, Khanh"
+date: "2025-04-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+```
+
+# Read Data
+
+```{r}
+# Membership file
+member <- read.csv("https://collinn.github.io/data/member.csv") %>%
+  mutate(DoB = ymd(DoB))  # convert DoB early
+
+# Claims file
+claims <- read.csv("https://collinn.github.io/data/claims.csv")
+```
+
+# Data Processing
+
+```{r}
+# Variable creation and data processing
+processed_claims <- claims %>%
+  mutate(
+    # Type of delivery
+    delivery_type = case_when(
+      ICD == "O80" ~ "Vaginal",
+      ICD == "O82" ~ "Cesarean",
+      TRUE ~ NA_character_
+    ),
+    # Binary indicators
+    gave_birth = as.integer(ICD %in% c("O80", "O82")),
+    vaginal = as.integer(ICD == "O80"),
+    Csection = as.integer(ICD == "O82"),
+    migraine_status = as.integer(ICD == "G43.4"),
+    mental_health_diagnosis = as.integer(ICD %in% c("F41.8", "F32.3")),
+    opioid_prescription = as.integer(ICD == "J0745")
+  )
+```
+
+```{r}
+# Combine all processing into final dataset
+final_dataset <- processed_claims %>%
+  # Join with member data
+  inner_join(member, by = "id") %>%
+  # Calculate age at delivery
+  mutate(
+    Date_Delivery = ymd(date),
+    Age_Delivery = as.integer(time_length(interval(DoB, Date_Delivery), "years"))
+  ) %>%
+  filter(Age_Delivery >= 18 & Age_Delivery < 41) %>%
+  # Calculate insurance dates
+  mutate(
+    insurance_date = ymd(paste(year, month, "01"))
+  ) %>%
+  group_by(id) %>%
+  mutate(
+    insurance_start_date = min(insurance_date, na.rm = TRUE),
+    insurance_end_date = max(insurance_date, na.rm = TRUE)
+  ) %>%
+  # Identify birth events
+  group_by(id, .add = TRUE) %>%
+  filter(any(gave_birth == 1)) %>%
+  mutate(gave_birth_date = min(Date_Delivery[gave_birth == 1])) %>%
+  # Insurance coverage validation
+  mutate(
+    insured_before = happen_after_n(year(as.Date(insurance_start_date)),
+                                    month(as.Date(insurance_start_date)),
+                                    as.Date(gave_birth_date),
+                                    9),
+    insured_after = happen_after_n(year(as.Date(gave_birth_date)),
+                                    month(as.Date(gave_birth_date)),
+                                    as.Date(insurance_end_date),
+                                    3)
+  ) %>%
+  filter(insured_before & insured_after) %>%
+  # Final variables
+  summarize(
+    across(c(vaginal, Csection, migraine_status, mental_health_diagnosis, opioid_prescription), max),
+    age_at_delivery = first(Age_Delivery),
+    .groups = 'drop'
+  )
+```
+
+# Report
+
+## Exploratory Graphs
+
+### Graph 1
+```{r}
+facet_labels <- data.frame(id=final_dataset$id, 
+                  mental_health_diagnosis=final_dataset$mental_health_diagnosis,
+                  migraine_status=ifelse(final_dataset$migraine_status
+                              %in% c("1"), "Yes", "No"),
+                  opioid_prescription=final_dataset$opioid_prescription, 
+                 birth_type=ifelse(final_dataset$vaginal 
+                              %in% c("1"), "Vaginal", "Cesarean")) 
+
+ggplot(facet_labels, aes(x=as.character(birth_type), 
+                          fill=as.character(opioid_prescription))) +
+  geom_bar() +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription") +
+  scale_x_discrete(labels=c("Cesarean", "Vaginal")) +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
+```
+
+### Graph 2
+```{r}
+ggplot(facet_labels, aes(x=as.character(mental_health_diagnosis), 
+                          fill=as.character(opioid_prescription))) +
+  geom_bar() +
+  facet_grid(.~birth_type) +
+  labs(x="Mental Health Diagnosis", y="Count", fill="Opioid Prescription") +
+  scale_x_discrete(labels=c("No", "Yes")) +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
+```
+
+### Graph 3
+```{r}
+ggplot(facet_labels, aes(x=migraine_status, 
+                         fill=as.character(opioid_prescription))) +
+  geom_bar() +
+  facet_grid(.~birth_type) +
+  labs(x="Migraine Status", y="Count", fill="Opioid Prescription") +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
+```
+
+
+## Statistical Model
+
+
+
+### Justifications
