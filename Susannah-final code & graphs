@@ -175,8 +175,21 @@ ggplot(facet_labels, aes(x=birth_type, fill=opioid_prescription)) +
   theme_bw() +
   scale_fill_manual(values=c("green3", "red3"))
 ```
+### Graph 7
+```{r}
+ggplot(facet_labels, aes(x=mental_health_diagnosis, 
+                          fill=opioid_prescription)) +
+  geom_bar() +
+  labs(x="Mental Health", y="Count", fill="Opioid Prescription", title="Effect of Mental Health Claim on Post-Partium Opioid Prescription") +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3"))
+```
+
 ## Statistical Model
 
-
+```{r}
+my.model <- lm(opioid_prescription ~ PlanType + vaginal + mental_health_diagnosis + migraine_status, data = final_dataset)
+summary(my.model)
+```
 
 ### Justifications
