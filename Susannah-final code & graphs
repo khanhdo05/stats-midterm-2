@@ -97,7 +97,7 @@ final_dataset <- processed_claims %>%
   filter(insured_before & insured_after) %>%
   # Final variables
   summarize(
-    across(c(vaginal, Csection, migraine_status, mental_health_diagnosis, opioid_prescription), max),
+    across(c(vaginal, Csection, migraine_status, mental_health_diagnosis, opioid_prescription, PlanType), max),
     age_at_delivery = first(Age_Delivery),
     .groups = 'drop'
   )
