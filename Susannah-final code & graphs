@@ -109,18 +109,18 @@ final_dataset <- processed_claims %>%
 
 ```{r}
 #Modifies final_dataset so the labels in the graphs are better understood
-facet_labels <- data.frame(id=final_dataset$id, 
-                  mental_health_diagnosis=
-                    ifelse(final_dataset$mental_health_diagnosis 
-                           %in% c("1"), "Yes", "No"), 
-                  migraine_status=ifelse(final_dataset$migraine_status
-                              %in% c("1"), "Yes", "No"),
-                  opioid_prescription=ifelse(final_dataset$opioid_prescription 
-                                             %in% c("1"), "Yes", "No"), 
-                 birth_type=ifelse(final_dataset$vaginal 
-                              %in% c("1"), "Vaginal", "Cesarean"), 
-                 age_at_delivery=final_dataset$age_at_delivery, 
-                 plan_type=final_dataset$PlanType) 
+facet_labels <- final_dataset %>%
+  mutate(mental_health_diagnosis=
+          ifelse(mental_health_diagnosis %in% c("1"), "Yes", "No"), 
+        migraine_status=
+          ifelse(migraine_status %in% c("1"), "Yes", "No"),
+        opioid_prescription=
+          ifelse(opioid_prescription %in% c("1"), "Yes", "No"), 
+        birth_type=
+          ifelse(vaginal %in% c("1"), "Vaginal", "Cesarean"), 
+        age_at_delivery=age_at_delivery) %>%
+  rename(plan_type=PlanType) %>%
+  select(!c("vaginal", "Csection"))
 ```
 
 ### Graph 1
