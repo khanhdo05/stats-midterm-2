@@ -125,53 +125,21 @@ facet_labels <- data.frame(id=final_dataset$id,
 
 ### Graph 1
 ```{r}
-ggplot(facet_labels, aes(x=as.character(birth_type), 
-                          fill=opioid_prescription)) +
-  geom_bar() +
-  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effect of Birth Type on Post-Partum Opioid Prescription") +
-  scale_x_discrete(labels=c("Cesarean", "Vaginal")) +
-  theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"))
-```
-
-### Graph 2
-```{r}
-ggplot(facet_labels, aes(x=as.character(mental_health_diagnosis), 
-                          fill=as.character(opioid_prescription))) +
-  geom_bar() +
-  facet_grid(.~birth_type) +
-  labs(x="Mental Health Diagnosis", y="Count", fill="Opioid Prescription") +
-  scale_x_discrete(labels=c("No", "Yes")) +
-  theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
-```
-
-### Graph 3
-```{r}
-ggplot(facet_labels, aes(x=migraine_status, 
-                         fill=as.character(opioid_prescription))) +
-  geom_bar() +
-  facet_grid(.~birth_type) +
-  labs(x="Migraine Status", y="Count", fill="Opioid Prescription") +
-  theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"), labels = c("No", "Yes"))
-```
-
-
-### Graph 4
-```{r}
 ggplot(facet_labels, aes(x=birth_type, 
                           fill=opioid_prescription)) +
-  geom_bar() +
+  geom_bar(position="dodge") +
   facet_grid(migraine_status~mental_health_diagnosis, labeller=label_both) +
-  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effects of Birth Type, Menta Health, and Mirgaines on Post-Partum Opioid Prescriptions") +
-  scale_x_discrete(labels=c("No", "Yes")) +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effects of Birth Type, Menta Health, 
+       and Mirgaines on Post-Partum Opioid Prescriptions") +
   theme_bw() +
   scale_fill_manual(values=c("green3", "red3")) +
-  theme(plot.title = element_text(size = 10))
+  theme(plot.title = element_text(hjust = 0.5))
 ```
+This graph is a bar chart which shows the relationship between the type of birth, if the mother had a mental health diagnosis, if the mother had migraines, 
+and post-partum opioid prescription. The x-axis is whether the woman gave by Cesarean or vaginal, the graph is faceted by whether or not the women had a mental 
+health claim and whether or not the mother had a migraine claim. The bars are filled by whether or not the women had an opioid prescription post-partum. 
 
-### Graph 5
+### Graph 2
 ```{r}
 ggplot(facet_labels, aes(x=opioid_prescription, y=age_at_delivery, 
                          color=opioid_prescription)) +
@@ -180,42 +148,51 @@ ggplot(facet_labels, aes(x=opioid_prescription, y=age_at_delivery,
   labs(x="Opioid Prescription", y="Age at Delivery", color="Opioid Prescription", 
        title="Effect of Age on Post-Partum Opioid Prescription") +
   theme_bw() +
-  scale_color_manual(values=c("green3", "red3")) 
+  scale_color_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(color="none")
 ```
-### Graph 6
-```{r}
-ggplot(facet_labels, aes(x=birth_type, fill=opioid_prescription)) +
-  geom_bar() +
-  facet_wrap(~plan_type) +
-  labs(x="Birth Type", y="Count", fill="Opioid Prescription",
-       title="Effect of Insurance Plan Type 
-       and Birth Type on Post-Partum Opioid Prescription") +
-  theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"))
-```
+This graph is a boxplot which shows the relationship between type of birth, the age of mother when she gave birth, and post-partum opioid prescription. 
+Whether or not the mother had an opioid prescription post-partum is on the x-axis. The y-axis is the age of the mother when she delivered, and the graph is 
+faceted by whether the delivery method was Cesarean or vaginal. 
 
-### Graph 7
+### Graph 3
 ```{r}
-ggplot(facet_labels, aes(x=mental_health_diagnosis, 
-                          fill=opioid_prescription)) +
-  geom_bar() +
-  labs(x="Mental Health", y="Count", fill="Opioid Prescription", title="Effect of Mental Health Claim on Post-Partum Opioid Prescription") +
+ggplot(facet_labels, aes(x=plan_type, fill=opioid_prescription)) +
+  geom_bar(position="fill") +
+  labs(x="Insurance Plan", y = "Proportion", 
+       fill="Opioid Prescription",
+       title="Proportion of Women on HMO vs. PPO Plan 
+       who Recieved Post-Partum Opioid Prescription") +
   theme_bw() +
-  scale_fill_manual(values=c("green3", "red3"))
+  scale_fill_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
-
+This graph is a filled bar chart showing the proportion of women who got post-partum opioid prescription based on the type of insurance plan the woman was on. 
+The x-axis is the type of insurance plan the woman was on and the bars are filled by whether the women got an opioid prescription post-partum. 
 
 ## Statistical Model
 
 ```{r}
-my.model <- lm(opioid_prescription ~ PlanType + vaginal + mental_health_diagnosis + migraine_status, data = final_dataset)
+my.model <- lm(opioid_prescription ~ vaginal + mental_health_diagnosis + migraine_status + PlanType, data = final_dataset)
 summary(my.model)
 ```
 
 ### Justifications
-We created a linear model to evaluate how our different variables of interest effect post-partum opioid prescriptions. Using the forward choice method, 
-we found that the type of birth, if the mother had a mental health claim, if the mother had migraines, and the type of insurance plan the mother impacted 
-if the mother got an opioid prescription. Age at delivery did not improve the model, showing that it was not influential on post-partum opioid prescription. 
-The adjusted r-square value of the final linear model is small, with $r^2=0.2608$. While migraine status does make the model better, the birth type is the most 
-influential variable on if a mother got an opioid prescription post-partum, with women who underwent C-sections more likely to get an opioid prescription than 
-women who had vaginal births. 
+We created a linear model to evaluate how our different variables of interest effect post-partum opioid prescriptions because we are interested in seeing how well 
+each of our variables of interest can be used to predict whether or not a women would get a opioid prescription post-partum. We did not use a hypothesis test because 
+this was not an experiment and we do not know if the subjects were randomly selected. Using the forward selection method, we found that the type of birth, if the mother 
+had a mental health claim, if the mother had migraines, and the type of insurance plan the mother had impacted if the mother got an opioid prescription post-partum. 
+Age at delivery did not improve the model, showing that it was not significantly influential on post-partum opioid prescription. This matches what we saw in Graph 2, 
+where the average age of women who did and did not recieve opioids was roughly equal, and age was roughly equal across birth types. The adjusted r-square value of the 
+final linear model is small, with $r^2=0.2608$, meaning the relationship between the variables in our model is weak. While mental health diagnosis does make the model 
+better, the birth type is the most influential variable on if a mother got an opioid prescription post-partum, with women who underwent C-sections more likely to get 
+an opioid prescription than women who had vaginal births. The model also shows that women with a mental health claim and/or migraine status are slightly more likely to 
+get an opioid prescription post-partum than women who do not. We decided to combine all mental health claims into one variable because we are interested if any mental 
+health claim at all impacts whether a woman gets an opioid prescription. From Graph 1, there does look to be more women who got opioid than not for women who had a mental 
+health diagnosis and migraines, but as graph 1 shows, most women in this dataset had neither a mental health diagnosis nor migraines. Graph 1 also shows that for women 
+with neither a mental health diagnosis nor migraines, those who had C-sections were more likely to get opiods afterwards, but for other combinations of mental health 
+diagnosis and migraine status, recieving opiods was roughly equal between the two delivery types. The model also shows that women are HMO plans are more slightly likely 
+to get an opioid prescription post-partum, and Graph 3 does support that because a slightly higher proportion of women got opioids on the HMO plan. We conclude that there 
+is a relationship between mental health diagnosis and if a woman receives opiods post-partum, but it is a small relationship and what determines if the women recieves 
+opioids post-partum is mainly driven by how the woman delivered her baby. 
