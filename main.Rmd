@@ -1,218 +1,201 @@
 ---
-title: "Midterm 2: Data Manipulation"
+title: "Midterm 2 Final"
 author: "Susannah, Finn, Khanh"
-date: "`r Sys.Date()`"
+date: "2025-04-03"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r, message = FALSE}
 library(dplyr)
 library(lubridate)
 library(ggplot2)
+library(tidyverse)
 ```
 
-# Data
 
 ```{r}
-member <- read.csv("https://collinn.github.io/data/member.csv")
+# Membership file
+member <- read.csv("https://collinn.github.io/data/member.csv") %>%
+  mutate(DoB = ymd(DoB))  # convert DoB early
+
+# Claims file
 claims <- read.csv("https://collinn.github.io/data/claims.csv")
 ```
 
-Our study is restricted to only those women who were at least 18 years old and younger than 41 (that is 40 and 11 months is fine, 41 years and 0 months is not) at the time of delivery.
 
 ```{r}
-# Finn:
-# Attempting to use lubridate to filter only patients from are 18 years old and younger than 41. 
-
-
-```
-
-```{r}
-# Attempting to find only claims which are births 
-birth_claims <- claims %>% 
-  mutate(delivery_type = case_when(
-    ICD %in% c("O80") ~ "Vaginal",
-    ICD %in% c("O82") ~ "Cesarean",
-    TRUE ~ NA_character_
-  )) %>%
-  mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
-  mutate(mental_health_diagnosis = case_when(
-    ICD %in% c("F41.8") ~ "Anxiety",
-    ICD %in% c("F32.3") ~ "Depression",
-    TRUE ~ NA_character_
-  ))
-
-# Once we have the birth claims, we can join with members to filter out any
-# members who got opioids that did not give birth
-
-
-```
-
-```{r}
-# convert dates and calculate age
-member <- member %>%
-  mutate(DoB = ymd(DoB),
-         age_at_delivery = floor(interval(DoB, ymd(paste(year, month, "01", sep="-"))) / years(1)))
-
-# apply age filter
-member <- member %>% filter(age_at_delivery >= 18 & age_at_delivery < 41)
-head(member)
-```
-
-
-```{r}
-#join birth claims to member
-joined_claims <- inner_join(x = birth_claims, y = member, by = "id")
-
-join_claims <- joined_claims %>%
-  rename(Date_Delivery=date)
-```
-
-```{r}
-# For insurance claims: similar to Khanh's mutation, create a binary variable
-# for whether individuals have had events happen to them each claim.
-claims_history <- claims %>% 
-   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
-   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
-   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
-   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
-
-# Summarize individual patients to see if they fit any of our criteria of interest:
-# gave birth, had migraine, had mental health issues, or had opioids prescribed. 
-# Group by id for a single patient. 
-patient_summaries <- claims_history %>% 
-  group_by(id) %>%
-  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
-            had_migraine = ifelse(max(migraine_status > 0), "Yes", "No"),
-            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), "Yes", "No"),
-            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"))
-
-# We may be able to remove patients who do not fit any of our criteria.
-# However... this is a limited analysis, does not consider timeframe.
-# Might be good for chopping down observations.
-
-# Idea: remove individuals of disinterest from patient_summaries, and then join
-# by matching patient IDs which remain.
-```
-
-```{r}
-#I added to Finn's code so it was easier to see type of birth
-claims_history <- claims %>% 
-   mutate(gave_birth = ifelse(ICD %in% c("O80", "O82"), 1, 0)) %>%
-   mutate(vaginal = ifelse(ICD %in% "O80", 1, 0)) %>%
-   mutate(Csection = ifelse(ICD %in% "O82", 1, 0)) %>%
-   mutate(migraine_status = ifelse(ICD %in% c("G43.4"), 1, 0)) %>%
-   mutate(mental_health_diagnosis = ifelse(ICD %in% c("F41.8", "F32.3"), 1, 0)) %>%
-   mutate(opioid_prescription = ifelse(ICD %in% c("J0745"), 1, 0))
-```
-
-```{r}
-#I also added type of birth to this code
-patient_summaries <- claims_history %>% 
-  group_by(id) %>%
-  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
-            vaginal = ifelse(max(vaginal > 0), "Yes", "No"),
-            Csection = ifelse(max(Csection > 0), "Yes", "No"),
-            had_migraine = ifelse(max(migraine_status > 0), "Yes", "No"),
-            mental_health_diagnosis = ifelse(max(mental_health_diagnosis > 0), "Yes", "No"),
-            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"))
-```
-
-```{r}
-#the way we originally calculated age at delivery was changing depending on the insurance year
-#here's a new way I figured out
-member_age <- join_claims %>%
-  mutate(Age_Delivery=ymd(Date_Delivery)-ymd(DoB)) %>%
-  mutate(Age_Delivery=Age_Delivery/365) %>%
-  mutate(Age_Delivery=as.integer(Age_Delivery)) %>%
-  filter(Age_Delivery >= 18 & Age_Delivery < 41)
-```
-
-```{r}
-#data set of only people who gave birth, their medical claims, and months insured
-join_births <- inner_join(x=member_age, y=patient_summaries, by = "id")
-#this has the right ages since I filtered it, but we still need to figure out how long they were insured
-```
-
-```{r}
-#counts how many months patient insured since each month is one row
-insured_time <- member %>%
-  group_by(id) %>%
-  summarize(insured_length=n())
-
-#join insured_length to main dataset
-join_insurance <- inner_join(x=join_births, y=insured_time, by = "id") %>%
-  filter(Date_Delivery >= "2017-09-01")#because sept 1st earliest delivery date we can gurantee they were insured 9 months before if insured starting on jan 1st
-#there are 5,981 individual ids in this set
-```
-
-```{r}
-
-join_births <- join_births %>%
+# Variable creation and data processing
+processed_claims <- claims %>%
   mutate(
-    insurance_date = as.Date(paste(year, month, "01", sep = "-")),
-    delivery_date = as.Date(Date_Delivery),  # Ensure Delivery_Date is in Date format
-    required_start = floor_date(delivery_date %m-% months(9), "month"),  # 9 months before
-    required_end = ceiling_date(delivery_date %m+% months(3), "month") - days(1)  # 3 months after end of delivery month
+    # Type of delivery
+    delivery_type = case_when(
+      ICD == "O80" ~ "Vaginal",
+      ICD == "O82" ~ "Cesarean",
+      TRUE ~ NA_character_
+    ),
+    # Binary indicators
+    gave_birth = as.integer(ICD %in% c("O80", "O82")),
+    vaginal = as.integer(ICD == "O80"),
+    Csection = as.integer(ICD == "O82"),
+    migraine_status = as.integer(ICD == "G43.4"),
+    mental_health_diagnosis = as.integer(ICD %in% c("F41.8", "F32.3")),
+    opioid_prescription = as.integer(ICD == "J0745")
+  )
+```
+
+```{r}
+# Helper function:
+# Adapted from Professor Rebelsky's Code.
+# Returns TRUE if date (d) occurred n months after the year (y), month (m) date.
+happen_after_n <- function(y, m, d, n) {
+  m <- m + 12*(y == 2018)
+  event <- month(d) + 12*(year(d) == 2018)
+  event - m >= n
+}
+```
+```{r}
+# Combine all processing into final dataset
+final_dataset <- processed_claims %>%
+  # Join with member data
+  inner_join(member, by = "id") %>%
+  # Calculate age at delivery
+  mutate(
+    Date_Delivery = ymd(date),
+    Age_Delivery = as.integer(time_length(interval(DoB, Date_Delivery), "years"))
+  ) %>%
+  filter(Age_Delivery >= 18 & Age_Delivery < 41) %>%
+  # Calculate insurance dates
+  mutate(
+    insurance_date = ymd(paste(year, month, "01"))
   ) %>%
   group_by(id) %>%
   mutate(
     insurance_start_date = min(insurance_date, na.rm = TRUE),
-    insurance_end_date = max(insurance_date, na.rm = TRUE),
-    insured_for_entire_period = insurance_start_date <= required_start & 
-                                insurance_end_date >= required_end
+    insurance_end_date = max(insurance_date, na.rm = TRUE)
   ) %>%
-  ungroup() %>%
-  filter(insured_for_entire_period) %>%  # Keep only those meeting criteria
-  select(-c(insurance_date, month, year, required_start, required_end, insured_for_entire_period)) %>%
-  drop_na(delivery_type)
-
+  # Identify birth events
+  group_by(id, .add = TRUE) %>%
+  filter(any(gave_birth == 1)) %>%
+  mutate(gave_birth_date = min(Date_Delivery[gave_birth == 1])) %>%
+  # Insurance coverage validation
+  mutate(
+    insured_before = happen_after_n(year(as.Date(insurance_start_date)),
+                                    month(as.Date(insurance_start_date)),
+                                    as.Date(gave_birth_date),
+                                    9),
+    insured_after = happen_after_n(year(as.Date(gave_birth_date)),
+                                    month(as.Date(gave_birth_date)),
+                                    as.Date(insurance_end_date),
+                                    3)
+  ) %>%
+  filter(insured_before & insured_after) %>%
+  # Final variables
+  summarize(
+    across(c(vaginal, Csection, migraine_status, mental_health_diagnosis, opioid_prescription, PlanType), max),
+    age_at_delivery = first(Age_Delivery),
+    .groups = 'drop'
+  )
 ```
 
+# Report
 
+In this report, the dataset is filtered down to specifics detailed at [Midterm 2](https://rebelskyw.cs.grinnell.edu/wp-content/uploads/2025/03/Midterm2.html). We worked with two data files. We as researchers are interested in investigating the effect of mental health diagnosis during pregnancy on the prescription of opioids post-partum.
+
+## Exploratory Graphs
 
 ```{r}
-# Finn 6005 observations. We need to cut this down? 
-join_insurance_late <- inner_join(x=join_births, y=insured_time, by = "id") %>%
-  filter(Date_Delivery >= "2017-09-01",
-         Date_Delivery <= "2018-09-01")
-
-patient_final_summaries <- join_insurance_late %>% 
-  group_by(id) %>%
-  summarize(gave_birth = ifelse(max(gave_birth > 0), "Yes", "No"),
-            vaginal = ifelse(max(vaginal > 0), "Yes", "No"),
-            Csection = ifelse(max(Csection > 0), "Yes", "No"),
-            migraine_status = ifelse(max(migraine_status > 0), "Yes", "No"),
-            mental_health_diagnosis.x = ifelse(max(mental_health_diagnosis.y > 0), "Yes", "No"),
-            opioid_prescription = ifelse(max(opioid_prescription > 0), "Yes", "No"),
-            age_at_delivery = max(age_at_delivery)) %>%
-  subset(gave_birth %in% c("Yes"))
-
-
-# Idea: mutate a data set into only birth claims, pull the date they gave births, and join this with insured_time? new variable "date_gave_birth" which can be our grounds for filtering
-
-# We can have 4237 - 4249
+#Modifies final_dataset so the labels in the graphs are better understood
+facet_labels <- final_dataset %>%
+  mutate(mental_health_diagnosis=
+          ifelse(mental_health_diagnosis %in% c("1"), "Yes", "No"), 
+        migraine_status=
+          ifelse(migraine_status %in% c("1"), "Yes", "No"),
+        opioid_prescription=
+          ifelse(opioid_prescription %in% c("1"), "Yes", "No"), 
+        birth_type=
+          ifelse(vaginal %in% c("1"), "Vaginal", "Cesarean"), 
+        age_at_delivery=age_at_delivery) %>%
+  rename(plan_type=PlanType) %>%
+  select(!c("vaginal", "Csection"))
 ```
 
+### Graph 1
+```{r}
+ggplot(facet_labels, aes(x=birth_type, 
+                          fill=opioid_prescription)) +
+  geom_bar(position="dodge") +
+  facet_grid(migraine_status~mental_health_diagnosis, labeller=label_both) +
+  labs(x="Birth Type", y="Count", fill="Opioid Prescription", title="Effects of Birth Type, Menta Health, 
+       and Mirgaines on Post-Partum Opioid Prescriptions") +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+This graph is a bar chart which shows the relationship between the type of birth, if the mother had a mental health diagnosis, if the mother had migraines, 
+and post-partum opioid prescription. The x-axis is whether the woman gave by Cesarean or vaginal, the graph is faceted by whether or not the women had a mental 
+health claim and whether or not the mother had a migraine claim. The bars are filled by whether or not the women had an opioid prescription post-partum. 
 
+### Graph 2
+```{r}
+ggplot(facet_labels, aes(x=opioid_prescription, y=age_at_delivery, 
+                         color=opioid_prescription)) +
+  geom_boxplot() +
+  facet_wrap(~birth_type) +
+  labs(x="Opioid Prescription", y="Age at Delivery", color="Opioid Prescription", 
+       title="Effect of Age on Post-Partum Opioid Prescription") +
+  theme_bw() +
+  scale_color_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(color="none")
+```
+This graph is a boxplot which shows the relationship between type of birth, the age of mother when she gave birth, and post-partum opioid prescription. 
+Whether or not the mother had an opioid prescription post-partum is on the x-axis. The y-axis is the age of the mother when she delivered, and the graph is 
+faceted by whether the delivery method was Cesarean or vaginal. 
+
+### Graph 3
+```{r}
+ggplot(facet_labels, aes(x=plan_type, fill=opioid_prescription)) +
+  geom_bar(position="fill") +
+  facet_wrap(~birth_type) +
+  labs(x="Insurance Plan", y = "Proportion", 
+       fill="Opioid Prescription",
+       title="Proportion of Women on HMO vs. PPO Plan 
+       who Recieved Post-Partum Opioid Prescription") +
+  theme_bw() +
+  scale_fill_manual(values=c("green3", "red3")) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+This graph is a filled bar chart showing the proportion of women who got post-partum opioid prescription based on the type of insurance plan the woman was on. 
+The x-axis is the type of insurance plan the woman was on and the bars are filled by whether the women got an opioid prescription post-partum. 
+The graph is faceted by whether the mother's delivery type was C-section or vaginal. 
+
+## Statistical Model
 
 ```{r}
-# Individual patient claims for births.
-gave_birth_dates <- claims %>%
-  filter(ICD %in% c("O80", "O82")) %>%
-  group_by(id) %>%
-  summarise(gave_birth_date = min(date))
+my.model <- lm(opioid_prescription ~ vaginal + mental_health_diagnosis + migraine_status + PlanType, data = final_dataset)
+summary(my.model)
 ```
 
-```{r}
-#filtering by if they gave birth, then the date connected should be the delivery date
-claim_filter <- claims %>%
-  filter(ICD %in% c("O80", "O82")) %>%
-  select(!CPT, ICD)
-
-
-#joins the insurance start and ends with the delivery dates
-join_dates_claims <- inner_join(x=claim_filter, y=start_end_dates, by="id") %>%
-  select(!ICD)
-```
+### Justifications
+We created a linear model to evaluate how our different variables of interest effect post-partum opioid prescriptions because we are interested in seeing how well 
+each of our variables of interest can be used to predict whether or not a women would get a opioid prescription post-partum. We did not use a hypothesis test because 
+this was not an experiment and we do not know if the subjects were randomly selected. Using the forward selection method, we found that the type of birth, if the mother
+had a mental health claim, if the mother had migraines, and the type of insurance plan the mother had impacted if the mother got an opioid prescription post-partum. 
+Age at delivery did not improve the model, showing that it was not significantly influential on post-partum opioid prescription. This matches what we saw in Graph 2, 
+where the average age of women who did and did not recieve opioids was roughly equal, and age was roughly equal across birth types. The adjusted r-square value of the 
+final linear model is small, with $r^2=0.2608$, meaning the relationship between the variables in our model is weak. While mental health diagnosis does make the model 
+better, the birth type is the most influential variable on if a mother got an opioid prescription post-partum, with women who underwent C-sections more likely to get an 
+opioid prescription than women who had vaginal births. The model also shows that women with a mental health claim and/or migraine status are slightly more likely to get 
+an opioid prescription post-partum than women who do not. We decided to combine all mental health claims into one variable because we are interested if any mental health 
+claim at all impacts whether a woman gets an opioid prescription. From Graph 1, there does look to be more women who got opioid than not for women who had a mental 
+health diagnosis and migraines, but as graph 1 shows, most women in this dataset had neither a mental health diagnosis nor migraines. Graph 1 also shows that for women 
+with neither a mental health diagnosis nor migraines, those who had C-sections were more likely to get opiods afterwards, but for other combinations of mental health 
+diagnosis and migraine status, recieving opiods was roughly equal between the two delivery types. The model also shows that women are HMO plans are more slightly likely 
+to get an opioid prescription post-partum, and Graph 3 does support that because a slightly higher proportion of women got opioids on the HMO plan. Graph 3 also shows 
+that getting opioids depends on what type of birth it was, because there is a higher proportion of women who got opioids on both plans who had C-sections versus vaginal 
+births. We conclude that there is a relationship between mental health diagnosis and if a woman receives opiods post-partum, but it is a small relationship and what 
+determines if the women receives opioids post-partum is mainly driven by how the woman delivered her baby. 
